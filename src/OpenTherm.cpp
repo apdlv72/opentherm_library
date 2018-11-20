@@ -287,3 +287,109 @@ float OpenTherm::getBoilerTemperature() {
 	unsigned long response = sendRequest(buildGetBoilerTemperatureRequest());
 	return getTemperature(response);
 }
+
+
+//building requests for home ventilation system
+
+unsigned long OpenTherm::buildSetVentilationMasterProductVersion(unsigned int hi, unsigned int lo) {
+    // T:OTMessage[WRITE_DATA,id:126,hi:18,lo:2,Master product version]:0
+    unsigned int data = (hi<<8) | lo;
+    unsigned long request = buildRequest(OpenThermRequestType::WRITE, OpenThermMessageID::MasterVersion, data);
+    return sendRequest(request);
+}
+
+unsigned long OpenTherm::buildGetVentilationTSPSetting(unsigned int index) {
+    // T:OTMessage[READ_DATA,id:89,hi:18,lo:0,TSP setting V/H]:0
+    unsigned long request = buildRequest(OpenThermRequestType::READ, OpenThermMessageID::TspSettingsVH, index);
+}
+
+unsigned long OpenTherm::buildSetVentilationMasterConfiguration(unsigned int hi, unsigned int lo) {
+    // T:OTMessage[WRITE_DATA,id:2,hi:0,lo:18,Master configuration]:0
+    unsigned int data = (hi<<8) | lo;
+    unsigned long request = buildRequest(OpenThermRequestType::WRITE, OpenThermMessageID::MConfigMMemberIDcode, data);
+    return sendRequest(request);
+}
+
+unsigned long OpenTherm::buildSetVentilationControlSetpoint(unsigned int level) {
+    // T:OTMessage[WRITE_DATA,id:71,hi:0,lo:2,Control setpoint V/H]:0
+    unsigned long request = buildRequest(OpenThermRequestType::WRITE, OpenThermMessageID::ControlSetpointVH, level);
+    return sendRequest(request);
+}
+
+
+// basic requests for home ventilation system
+
+unsigned long OpenTherm::setVentilationMasterProductVersion(unsigned int hi, unsigned int lo) {
+    // T:OTMessage[WRITE_DATA,id:126,hi:18,lo:2,Master product version]:0
+    unsigned long request = buildSetVentilationMasterProductVersion(hi, lo);
+    return sendRequest(request);
+}
+
+unsigned long OpenTherm::getVentilationSlaveProductVersion() {
+    // T:OTMessage[READ_DATA,id:127,hi:0,lo:0,Slave product version]:0
+    unsigned long request = buildRequest(OpenThermRequestType::READ, OpenThermMessageID::SlaveVersion, 0);
+    return sendRequest(request);
+}
+
+unsigned long OpenTherm::getVentilationTSPSetting(unsigned int index) {
+    // T:OTMessage[READ_DATA,id:89,hi:18,lo:0,TSP setting V/H]:0
+    unsigned long request = buildGetVentilationTSPSetting(index);
+    return sendRequest(request);
+}
+
+unsigned long OpenTherm::setVentilationMasterConfiguration(unsigned int hi, unsigned int lo) {
+    // T:OTMessage[WRITE_DATA,id:2,hi:0,lo:18,Master configuration]:0
+    unsigned long request = buildSetVentilationMasterConfiguration(hi, lo);
+    return sendRequest(request);
+}
+
+unsigned long OpenTherm::getVentilationStatus() {
+    // T:OTMessage[READ_DATA,id:70,hi:1,lo:0,Status V/H]:0
+    unsigned long request = buildRequest(OpenThermRequestType::READ, OpenThermMessageID::StatusVH, 0);
+    return sendRequest(request);
+}
+
+bool OpenTherm::isFilterCheck(unsigned int ventilationStatus) {
+    return ventilationStatus & 0x20 == 0x20; // bit 5 (32) set
+}
+
+unsigned long OpenTherm::setVentilationControlSetpoint(VentilationLevel level) {
+    // T:OTMessage[WRITE_DATA,id:71,hi:0,lo:2,Control setpoint V/H]:0
+    unsigned int request = buildSetVentilationControlSetpoint(level);
+    return sendRequest(request);
+}
+
+unsigned long OpenTherm::getVentilationConfigurationMemberId() {
+    // T:OTMessage[READ_DATA,id:74,hi:0,lo:0,Configuration/memberid V/H]:0
+    unsigned long request = buildRequest(OpenThermRequestType::READ, OpenThermMessageID::ConfigurationMemberidVH, 0);
+    return sendRequest(request);
+}
+
+unsigned long OpenTherm::getVentilationRelativeVentilation() {
+    // T:OTMessage[READ_DATA,id:77,hi:0,lo:0,Relative ventilation]:0
+    unsigned long request = buildRequest(OpenThermRequestType::READ, OpenThermMessageID::RelativeVentilationVH, 0);
+    return sendRequest(request);
+}
+
+unsigned long OpenTherm::getSupplyInletTemperature() {
+    // T:OTMessage[READ_DATA,id:80,hi:0,lo:0,Supply inlet temperature]:0
+    unsigned long request = buildRequest(OpenThermRequestType::READ, OpenThermMessageID::TsupplyInletVH, 0);
+    return sendRequest(request);
+}
+
+unsigned long OpenTherm::getExhaustInletTemperature() {
+    //T:OTMessage[READ_DATA,id:82,hi:0,lo:0,Exhaust inlet temperature]:0
+    unsigned long request = buildRequest(OpenThermRequestType::READ, OpenThermMessageID::TexhaustInletVH, 0);
+    return sendRequest(request);
+}
+
+unsigned long OpenTherm::getSupplyOutletTemperature() {
+    unsigned long request = buildRequest(OpenThermRequestType::READ, OpenThermMessageID::TsupplyOutletVH, 0);
+    return sendRequest(request);
+}
+
+unsigned long OpenTherm::getExhaustOutletTemperature() {
+    unsigned long request = buildRequest(OpenThermRequestType::READ, OpenThermMessageID::TexhaustOutletVH, 0);
+    return sendRequest(request);
+}
+
