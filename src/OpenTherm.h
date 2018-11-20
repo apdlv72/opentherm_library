@@ -179,12 +179,11 @@ public:
 	bool setBoilerTemperature(float temperature);
 	float getBoilerTemperature();
 
-
-    //building requests for home ventilation system
-    unsigned long buildSetVentilationMasterProductVersion(unsigned int hi, unsigned int lo);
-    unsigned long buildGetVentilationTSPSetting(unsigned int index);
-    unsigned long buildSetVentilationMasterConfiguration(unsigned int hi, unsigned int lo);
-    unsigned long buildSetVentilationControlSetpoint(unsigned int level);
+	//building requests for home ventilation system
+	unsigned long buildSetVentilationMasterProductVersion(unsigned int hi, unsigned int lo);
+	unsigned long buildGetVentilationTSPSetting(unsigned int index);
+	unsigned long buildSetVentilationMasterConfiguration(unsigned int hi, unsigned int lo);
+	unsigned long buildSetVentilationControlSetpoint(unsigned int level);
 
 	//basic requests for home ventilation system
 	unsigned long setVentilationMasterProductVersion(unsigned int hi, unsigned int lo);
