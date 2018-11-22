@@ -82,82 +82,153 @@ float toTemperature(unsigned long response) {
     int hi = response & 0xff00;
     unsigned lo = response & 0x00ff;
 
-    // TODO: Negative values probably wrong since I have no examples (my own supply inlet goes never below 0C)
+    // TODO: Negative values probably wrong since I have no examples (my own supply inlet goes never below 0 degrees Celsius)
     float result = 0.01*(100*lo/255) + hi;
     return result;
 }
 
+static long unsigned loop_counter = 0;
+static long unsigned last_command_sent = 0;
+
 void loop()
 {	
+    int step = loop_counter++;
+
     unsigned long response;
     OpenThermResponseStatus responseStatus;
 
-    response = ot.getVentilationSlaveProductVersion();
-    if (ot.getLastResponseStatus() == OpenThermResponseStatus::SUCCESS) {
-        slaveProductVersionHi = (response & 0xffff)>8;
-        slaveProductVersionLo = (response & 0x00ff);
-        Serial.println("Slave product version:      " + String(slaveProductVersionHi)  + "/" +  String(slaveProductVersionLO));
+    last_command_sent = millis();
+
+    switch (step) {
+
+    case 0:
+        Serial.println("-> getVentilationSlaveProductVersion()");
+        response = ot.getVentilationSlaveProductVersion();
+        if ((responseStatus = ot.getLastResponseStatus()) == OpenThermResponseStatus::SUCCESS) {
+            slaveProductVersionHi = (response & 0xffff)>8;
+            slaveProductVersionLo = (response & 0x00ff);
+            Serial.println("Slave product version:      " + String(slaveProductVersionHi)  + "/" +  String(slaveProductVersionLo));
+        }
+        break;
+
+    case 1:
+        Serial.println(String("-> setVentilationMasterProductVersion(") + masterProductVersionHi + "," + masterProductVersionLo + ")");
+        response = ot.setVentilationMasterProductVersion(masterProductVersionHi, masterProductVersionLo);
+        if ((responseStatus = ot.getLastResponseStatus()) == OpenThermResponseStatus::SUCCESS) {
+            // TODO: Response ignored .. what should we do with the unit's answer?
+        }
+        break;
+
+    case 2:
+        Serial.println(String("-> getVentilationTSPSetting(") + tspIndex + ")");
+        response = ot.getVentilationTSPSetting(tspIndex);
+        if ((responseStatus = ot.getLastResponseStatus()) == OpenThermResponseStatus::SUCCESS) {
+            tsps[tspIndex] = response & 0xff;
+        }
+        // Vitovent requests TSP values for indeces 0,...,63 in a row an and starts over at index 0
+        tspIndex++;
+        if (tspIndex>63) {
+            tspIndex = 0;
+        }
+        break;
+
+    case 3:
+        Serial.println(String("-> setVentilationMasterConfiguration(") + masterConfigurationHi + "," + masterConfigurationLo + ")");
+        response = ot.setVentilationMasterConfiguration(masterConfigurationHi, masterConfigurationLo);
+        if ((responseStatus = ot.getLastResponseStatus()) == OpenThermResponseStatus::SUCCESS) {
+            // TODO: Response ignored .. what should we do with the unit's answer?
+        }
+        break;
+
+    case 4:
+        Serial.println("-> getVentilationStatus()");
+        response = ot.getVentilationStatus();
+        if ((responseStatus = ot.getLastResponseStatus()) == OpenThermResponseStatus::SUCCESS) {
+            ventilationStatus = response & 0xffff;
+            Serial.println("Ventilation status:         " + String(ventilationStatus)   + " degrees C");
+            if (ot.isFilterCheck(ventilationStatus)) {
+                Serial.println("*** CHECK FILTER ***");
+            }
+        }
+        break;
+
+    case 5:
+        Serial.println(String("-> setVentilationControlSetpoint(") + ventilationLevel + ")");
+        response = ot.setVentilationControlSetpoint(ventilationLevel);
+        if ((responseStatus = ot.getLastResponseStatus()) == OpenThermResponseStatus::SUCCESS) {
+            // TODO: Response ignored .. what should we do with the unit's answer? Check if accepted? Just print/dump?
+        }
+        break;
+
+    case 6:
+        Serial.println("-> getVentilationConfigurationMemberId()");
+        response = ot.getVentilationConfigurationMemberId();
+        if ((responseStatus = ot.getLastResponseStatus()) == OpenThermResponseStatus::SUCCESS) {
+            configurationMemberId = response & 0xff;
+            // TODO: Split config member ID into hi/lo?
+            Serial.println("Configuration member ID:    " + String(configurationMemberId));
+        }
+        break;
+
+    case 7:
+        Serial.println("-> getVentilationRelativeVentilation()");
+        response = ot.getVentilationRelativeVentilation();
+        if ((responseStatus = ot.getLastResponseStatus()) == OpenThermResponseStatus::SUCCESS) {
+            relativeVentilation = response & 0xff;
+            Serial.println("Relative ventilation level: " + String(relativeVentilation) + " degrees C");
+        }
+        break;
+
+    case 8:
+        Serial.println("-> getSupplyInletTemperature()");
+        response = ot.getSupplyInletTemperature();
+        if (ot.getLastResponseStatus() == OpenThermResponseStatus::SUCCESS) {
+            supplyInletTemp = toTemperature(response);
+            Serial.println("Supply  inlet  temperature: " + String(supplyInletTemp)     + " degrees C");
+        }
+        break;
+
+    case 9:
+        Serial.println("-> getExhaustInletTemperature()");
+        response = ot.getExhaustInletTemperature();
+        if ((responseStatus = ot.getLastResponseStatus()) == OpenThermResponseStatus::SUCCESS) {
+            exhaustInletTemp = toTemperature(response);
+            Serial.println("Exhaust inlet  temperature: " + String(exhaustInletTemp)    + " degrees C");
+        }
+        break;
+
+    /*
+     * Probably unsupported (by my Vitovent300?) or at least never sent.
+     * But maybe with those devices that support a summer bypass?
+    case 10:
+        response = ot.getSupplyInletTemperature();
+        break;
+
+    case 11:
+        response = ot.getExhaustInletTemperature();
+        break:
+    */
+
+    default:
+        // start over with step 0
+        loop_counter = 0;
+        return;
     }
 
-    response = ot.setVentilationMasterProductVersion(masterProductVersionHi, masterProductVersionLo);
-    // TODO: Response ignored .. what should we do with the unit's answer?
+    Serial.println(String("<- response=") + response + ", status=" + responseStatus);
 
-    response = ot.getVentilationTSPSetting(tspIndex);
-    if (ot.getLastResponseStatus() == OpenThermResponseStatus::SUCCESS) {
-        tsps[tspIndex] = response & 0xff;
-    }
-
-    // Vitovent requests TSP values for indeces 0,...,63 in a row an dthe starts at 0
-    tspIndex++;
-    if (tspIndex>63) {
-        tspIndex = 0;
-    }
-
-    response ot.setVentilationMasterConfiguration(masterConfigurationHi, masterConfigurationLo);
-    // TODO: Response ignored .. what should we do with the unit's answer?
-
-    response = ot.getVentilationStatus();
-    if (ot.getLastResponseStatus() == OpenThermResponseStatus::SUCCESS) {
-        ventilationStatus = response & 0xffff;
-        Serial.println("Ventilation status:         " + String(ventilationStatus)   + " degrees C");
-        if (ot.isFilterCheck(ventilationStatus)) {
-            Serial.println("*** CHECK FILTER ***");
+    unsigned long time_to_wait = 100; // ms
+    unsigned long now = millis();
+    if (now>last_command_sent) { // overflow possible on system time after 42 days
+        unsigned long execution_time = now-last_command_sent;
+        if (execution_time<900) {
+            time_to_wait = 900-execution_time;
         }
     }
 
-    response = ot.setVentilationControlSetpoint(ventilationLevel);
-    // TODO: Response ignored .. what should we do with the unit's answer? Check if accepted? Just print/dump?
+    delay(time_to_wait);
 
-    response = ot.getVentilationConfigurationMemberId();
-    if (ot.getLastResponseStatus() == OpenThermResponseStatus::SUCCESS) {
-        configurationMemberId = response & 0xff;
-        // TODO: Split config member ID into hi/lo?
-        Serial.println("Configuration member ID:    " + String(configurationMemberId));
-    }
-
-    response = ot.getVentilationRelativeVentilation();
-    if (ot.getLastResponseStatus() == OpenThermResponseStatus::SUCCESS) {
-        relativeVentilation = response & 0xff;
-        Serial.println("Relative ventilation level: " + String(relativeVentilation) + " degrees C");
-    }
-
-    response = ot.getSupplyInletTemperature();
-    if (ot.getLastResponseStatus() == OpenThermResponseStatus::SUCCESS) {
-        supplyInletTemp = toTemperature(response);
-        Serial.println("Supply  inlet  temperature: " + String(supplyInletTemp)     + " degrees C");
-    }
-
-    response = ot.getExhaustInletTemperature();
-    if (ot.getLastResponseStatus() == OpenThermResponseStatus::SUCCESS) {
-        exhaustInletTemp = toTemperature(response);
-        Serial.println("Exhaust inlet  temperature: " + String(exhaustInletTemp)    + " degrees C");
-    }
-
-    // Probably unsupported (at least by my Vitovent300?) But maybe with those that support a summer bypass?
-    /*
-    response = ot.getSupplyInletTemperature();
-    response = ot.getExhaustInletTemperature();
-    */
+}
 
 /*  Log from a Vitovent 300:
 
@@ -222,6 +293,3 @@ void loop()
     T:OTMessage[WRITE_DATA,id:2,hi:0,lo:18,Master configuration]:0
 */
 
-	Serial.println();
-	delay(1000);
-}
